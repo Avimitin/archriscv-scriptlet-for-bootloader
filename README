@@ -1,0 +1,28 @@
+QEMU system for building bootloader
+===================================
+
+
+Prerequisites
+-------------
+	
+	* git
+	* qemu-system-riscv
+	* qemu-img
+	* riscv64-linux-gnu-gcc
+
+
+Build Image
+-----------
+
+	make build
+
+
+
+Additional Info
+---------------
+
+	* SSH
+		ssh root@localhost -p 32222
+
+	* SCP
+		scp -P 32222 -O root@localhost:/path/to/file ./file
