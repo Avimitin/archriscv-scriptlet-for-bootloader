@@ -7,24 +7,20 @@
 . /usr/share/makepkg/util.sh
 colorize
 
-toggle-systemd-firstboot() {
-    msg2 "Toggle systemd-firstboot..."
-    sudo rm -f qcow2/etc/{machine-id,localtime,hostname,shadow,locale.conf}
-    sudo mkdir -p qcow2/etc/systemd/system/systemd-firstboot.service.d
-    cat << EOF | sudo tee qcow2/etc/systemd/system/systemd-firstboot.service.d/install.conf
-[Service]
-ExecStart=
-ExecStart=/usr/bin/systemd-firstboot --prompt --force
-
-[Install]
-WantedBy=sysinit.target
-EOF
-    sudo arch-chroot qcow2 systemctl enable systemd-firstboot.service
+setup-sshd() {
+    msg2 "Setting up sshd"
+    sudo echo -e "PermitEmptyPasswords Yes\nPermitRootLogin Yes" | sudo tee qcow2/etc/ssh/sshd_config
 }
 
-use-fixed-password() {
-    msg2 "Using fixed password..."
-    : # set in rootfs
+setup-nologin() {
+    msg2 "Disable password..."
+    sudo sed -i 's/root:[^:]*:\(.*\)/root::\1/' qcow2/etc/shadow
+}
+
+setup-services() {
+    msg2 "Enable sshd and dhcpcd service"
+    sudo arch-chroot qcow2 systemctl enable dhcpcd
+    sudo arch-chroot qcow2 systemctl enable sshd
 }
 
 msg "Building u-boot..."
@@ -93,7 +89,7 @@ msg "Install kernel package..."
 
 sudo arch-chroot qcow2 pacman \
     --noconfirm \
-    -Syu linux linux-firmware
+    -Syu linux linux-firmware openssh dhcpcd
 
 sudo mkdir -p qcow2/boot/extlinux
 cat << EOF | sudo tee qcow2/boot/extlinux/extlinux.conf
@@ -114,9 +110,9 @@ yes y | sudo pacman \
     --sysroot ./qcow2 \
     --sync --clean --clean
 
-# https://github.com/CoelacanthusHex/archriscv-scriptlet/issues/1
-toggle-systemd-firstboot
-#use-fixed-password
+setup-nologin
+setup-sshd
+setup-services
 
 msg2 "Unmount..."
 sudo umount qcow2
